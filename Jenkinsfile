@@ -4,7 +4,6 @@ pipeline {
     environment {
         PYTHON_VERSION = 'python3'
         DEPLOYMENT_DIR = "${WORKSPACE}/deployment"
-        VENV_DIR = "${WORKSPACE}/venv"
     }
     
     stages {
@@ -22,42 +21,20 @@ pipeline {
             }
         }
         
-        stage('Setup Python Environment') {
-            steps {
-                echo '========================================'
-                echo 'Stage 2: Setting up Python Environment'
-                echo '========================================'
-                
-                sh '''
-                    # Check Python version
-                    ${PYTHON_VERSION} --version
-
-                    # Create virtual environment if it doesn't exist
-                    if [ ! -d "${VENV_DIR}" ]; then
-                        echo "Creating virtual environment..."
-                        ${PYTHON_VERSION} -m venv ${VENV_DIR}
-                    fi
-
-                    # Activate virtual environment and upgrade pip
-                    source ${VENV_DIR}/bin/activate
-                    pip install --upgrade pip
-                    echo "Python environment setup complete!"
-                '''
-            }
-        }
-        
         stage('Install Dependencies') {
             steps {
                 echo '========================================'
-                echo 'Stage 3: Installing Python Dependencies'
+                echo 'Stage 2: Installing Python Dependencies'
                 echo '========================================'
                 
                 sh '''
-                    source ${VENV_DIR}/bin/activate
+                    echo "Python version:"
+                    python3 --version
 
                     if [ -f "requirements.txt" ]; then
                         echo "Installing dependencies from requirements.txt..."
-                        pip install -r requirements.txt
+                        pip3 install --upgrade pip
+                        pip3 install -r requirements.txt
                         echo "Dependencies installed successfully!"
                     else
                         echo "ERROR: requirements.txt not found!"
@@ -65,7 +42,7 @@ pipeline {
                     fi
 
                     echo "Installed packages:"
-                    pip list
+                    pip3 list
                 '''
             }
         }
@@ -73,11 +50,10 @@ pipeline {
         stage('Run Unit Tests') {
             steps {
                 echo '========================================'
-                echo 'Stage 4: Running Unit Tests with pytest'
+                echo 'Stage 3: Running Unit Tests with pytest'
                 echo '========================================'
                 
                 sh '''
-                    source ${VENV_DIR}/bin/activate
                     echo "Running pytest..."
                     pytest test_skeleton_app.py -v --tb=short --junitxml=test-results.xml
                 '''
@@ -94,7 +70,7 @@ pipeline {
         stage('Build') {
             steps {
                 echo '========================================'
-                echo 'Stage 5: Building Application'
+                echo 'Stage 4: Building Application'
                 echo '========================================'
                 
                 sh '''
@@ -102,7 +78,6 @@ pipeline {
                     mkdir -p ${BUILD_DIR}
 
                     echo "Packaging application..."
-
                     cp skeleton_app.py ${BUILD_DIR}/
                     cp requirements.txt ${BUILD_DIR}/
 
@@ -130,7 +105,7 @@ pipeline {
         stage('Deploy') {
             steps {
                 echo '========================================'
-                echo 'Stage 6: Simulating Deployment'
+                echo 'Stage 5: Simulating Deployment'
                 echo '========================================'
                 
                 sh '''
@@ -158,16 +133,6 @@ Branch: ${BRANCH_NAME}
 Deployed By: ${BUILD_USER}
 EOF
 
-                    cat > ${DEPLOYMENT_DIR}/restart.sh << 'RESTART_EOF'
-#!/bin/bash
-echo "Stopping Flask application..."
-# kill $(ps aux | grep '[s]keleton_app.py' | awk '{print $2}') 2>/dev/null || true
-echo "Starting Flask application..."
-# nohup python3 skeleton_app.py > app.log 2>&1 &
-echo "Flask application restarted!"
-RESTART_EOF
-
-                    chmod +x ${DEPLOYMENT_DIR}/restart.sh
                     echo "Deployment completed to ${DEPLOYMENT_DIR}"
                 '''
             }
@@ -190,10 +155,6 @@ RESTART_EOF
         
         failure {
             echo "Pipeline failed! ❌"
-        }
-        
-        unstable {
-            echo "Pipeline is unstable! ⚠️"
         }
     }
 }
