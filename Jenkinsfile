@@ -4,6 +4,7 @@ pipeline {
     environment {
         PYTHON_VERSION = 'python3'
         DEPLOYMENT_DIR = "${WORKSPACE}/deployment"
+        PATH = "${HOME}/Library/Python/3.9/bin:${env.PATH}"  // Add pip user binaries to PATH
     }
     
     stages {
@@ -33,8 +34,8 @@ pipeline {
 
                     if [ -f "requirements.txt" ]; then
                         echo "Installing dependencies from requirements.txt..."
-                        pip3 install --upgrade pip
-                        pip3 install -r requirements.txt
+                        python3 -m pip install --upgrade pip --user
+                        python3 -m pip install -r requirements.txt --user
                         echo "Dependencies installed successfully!"
                     else
                         echo "ERROR: requirements.txt not found!"
@@ -42,7 +43,7 @@ pipeline {
                     fi
 
                     echo "Installed packages:"
-                    pip3 list
+                    python3 -m pip list --user
                 '''
             }
         }
@@ -54,6 +55,7 @@ pipeline {
                 echo '========================================'
                 
                 sh '''
+                    export PATH="${HOME}/Library/Python/3.9/bin:$PATH"
                     echo "Running pytest..."
                     pytest test_skeleton_app.py -v --tb=short --junitxml=test-results.xml
                 '''
